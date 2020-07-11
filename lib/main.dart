@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_counter/FuelBloc.dart';
+import 'package:flutter_counter/FuelState.dart';
+
+import 'FuelEvent.dart';
 
 void main() {
   runApp(FuelApp());
@@ -34,6 +39,8 @@ class _FuelFormState extends State<FuelForm> {
 
   @override
   Widget build(BuildContext context) {
+    final FuelBloc _fuelBloc = FuelBloc();
+
     TextStyle textStyle = Theme.of(context).textTheme.bodyText1;
     // TODO: implement build
     return Scaffold(
@@ -118,9 +125,10 @@ class _FuelFormState extends State<FuelForm> {
                       color: Theme.of(context).primaryColorDark,
                       textColor: Theme.of(context).primaryColorLight,
                       onPressed: () {
-                        setState(() {
-                          result = _calculate();
-                        });
+                        _fuelBloc.add(SubmitButtonPressed(
+                            price: priceController.text,
+                            distance: distanceController.text,
+                            distancePerUnit: avgController.text));
                       },
                       child: Text(
                         'Submit',
@@ -136,9 +144,7 @@ class _FuelFormState extends State<FuelForm> {
                     color: Theme.of(context).primaryColorLight,
                     textColor: Theme.of(context).primaryColorDark,
                     onPressed: () {
-                      setState(() {
-                        reset();
-                      });
+                      _fuelBloc.add(ResetButtonPressed());
                     },
                     child: Text(
                       'Reset',
@@ -148,43 +154,39 @@ class _FuelFormState extends State<FuelForm> {
                 ))
               ],
             ),
-            Text(result)
+            BlocConsumer(
+              bloc: _fuelBloc,
+              builder: (BuildContext context, state) {
+                if (state is FuelInputSuccess) {
+                  return Text('Your trip will cost ${state.result.toString()} ${_currency}');
+                } else if (state is FuelInputError) {
+                  return Text(state.error);
+                } else {
+                  return Container();
+                }
+              },
+              listener: (BuildContext context, state) {
+                if (state is FuelInputReset) {
+                  reset();
+                }
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
+  void reset() {
+    distanceController.clear();
+    avgController.clear();
+    priceController.clear();
+  }
+
+
   _onDropDownChanged(String value) {
     setState(() {
       this._currency = value;
-    });
-  }
-
-  String _calculate() {
-    if (!(distanceController.text.isEmpty &&
-        priceController.text.isEmpty &&
-        avgController.text.isEmpty)) {
-      double _distance = double.parse(distanceController.text);
-      double _fuelCost = double.parse(priceController.text);
-      double _consumption = double.parse(avgController.text);
-      double _totalcost = _distance / _consumption * _fuelCost;
-      result = 'The total cost of your trip ist ' +
-          _totalcost.toStringAsFixed(2) +
-          ' ' +
-          _currency;
-    } else {
-      result = 'Please fill out all required fields!';
-    }
-    return result;
-  }
-
-  void reset() {
-    distanceController.text = '';
-    avgController.text = '';
-    priceController.text = '';
-    setState(() {
-      result = '';
     });
   }
 }
